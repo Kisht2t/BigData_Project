@@ -14,9 +14,9 @@ _WORKER_DIR = os.path.join(os.path.dirname(__file__), "..", "worker")
 if _WORKER_DIR not in sys.path:
     sys.path.insert(0, os.path.abspath(_WORKER_DIR))
 
-from shared.models import AgentTask, RetrievalResult, RetrievedChunk, SourceType
-from embedder import embed_one
-from vector_store import search, ensure_collection
+from shared.models import AgentTask, RetrievalResult, RetrievedChunk  # noqa: E402
+from embedder import embed_one  # noqa: E402
+from vector_store import search, ensure_collection  # noqa: E402
 
 
 def run_retrieval(task: AgentTask) -> RetrievalResult:

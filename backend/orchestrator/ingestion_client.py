@@ -13,7 +13,7 @@ _INGESTION_PATH = "/ingestion" if os.path.isdir("/ingestion") else os.path.abspa
 if _INGESTION_PATH not in sys.path:
     sys.path.insert(0, _INGESTION_PATH)
 
-from shared.models import IngestRequest
+from shared.models import IngestRequest  # noqa: E402
 
 
 class IngestResult(BaseModel):

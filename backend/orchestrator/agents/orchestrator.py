@@ -7,13 +7,11 @@ import os
 import time
 import uuid
 import re
-from datetime import datetime
 
 import anthropic
 
 from shared.models import (
-    AgentTask, AskResponse, HistoryItem, RetrievalResult, SourceAttribution,
-    Contradiction, SourceType,
+    AgentTask, AskResponse, HistoryItem, RetrievalResult, SourceType,
 )
 from .critic import CriticAgent
 from .prompts import DECOMPOSE_QUESTION_PROMPT

@@ -7,22 +7,21 @@ import re
 
 import anthropic
 
+from shared.models import (
+    AskResponse,
+    Contradiction,
+    RetrievalResult,
+    SourceAttribution,
+    SourceType,
+)
+from .prompts import CRITIC_PROMPT
+
 
 def _strip_json(text: str) -> str:
     text = text.strip()
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
     return text.strip()
-
-from shared.models import (
-    AskResponse,
-    Contradiction,
-    HistoryItem,
-    RetrievalResult,
-    SourceAttribution,
-    SourceType,
-)
-from .prompts import CRITIC_PROMPT
 
 _CLAUDE_MODEL = "claude-sonnet-4-6"
 _MAX_CHUNKS_PER_SOURCE = 5
