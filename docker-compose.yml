@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  # ─── Orchestrator API ──────────────────────────────────────────────────
+  orchestrator:
+    build:
+      context: ./backend/orchestrator
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      - ENVIRONMENT=local
+    depends_on:
+      - localstack
+    volumes:
+      - ./backend/shared:/app/shared
+      - ./backend/orchestrator:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ─── Retriever Worker ──────────────────────────────────────────────────
+  worker:
+    build:
+      context: ./backend/worker
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      - ENVIRONMENT=local
+    depends_on:
+      - localstack
+    volumes:
+      - ./backend/shared:/app/shared
+      - ./backend/worker:/app
+    command: python main.py
+
+  # ─── Next.js Frontend ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_ORCHESTRATOR_URL=http://localhost:8000
+    depends_on:
+      - orchestrator
+
+  # ─── LocalStack (local AWS: SQS + DynamoDB + S3) ───────────────────────
+  localstack:
+    image: localstack/localstack:3.3
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=sqs,dynamodb,s3
+      - DEFAULT_REGION=us-east-1
+      - DEBUG=0
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - ./scripts/localstack_init.sh:/etc/localstack/init/ready.d/init.sh
+
+volumes:
+  localstack_data:

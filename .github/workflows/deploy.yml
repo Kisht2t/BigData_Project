@@ -1,0 +1,110 @@
+name: Deploy to ECS
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  CLUSTER: mars-cluster
+
+jobs:
+  deploy:
+    name: Build, push, deploy
+    runs-on: ubuntu-latest
+    # Only deploy if CI passed — never deploy a broken build
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ─── Build and push all images (root build context for Python services) ──
+      - name: Build and push orchestrator
+        run: |
+          docker build \
+            -f backend/orchestrator/Dockerfile \
+            -t $ECR_REGISTRY/mars-orchestrator:${{ github.sha }} \
+            -t $ECR_REGISTRY/mars-orchestrator:latest \
+            .
+          docker push $ECR_REGISTRY/mars-orchestrator:${{ github.sha }}
+          docker push $ECR_REGISTRY/mars-orchestrator:latest
+
+      - name: Build and push worker
+        run: |
+          docker build \
+            -f backend/worker/Dockerfile \
+            -t $ECR_REGISTRY/mars-worker:${{ github.sha }} \
+            -t $ECR_REGISTRY/mars-worker:latest \
+            .
+          docker push $ECR_REGISTRY/mars-worker:${{ github.sha }}
+          docker push $ECR_REGISTRY/mars-worker:latest
+
+      - name: Build and push ingestion
+        run: |
+          docker build \
+            -f ingestion/Dockerfile \
+            -t $ECR_REGISTRY/mars-ingestion:${{ github.sha }} \
+            -t $ECR_REGISTRY/mars-ingestion:latest \
+            .
+          docker push $ECR_REGISTRY/mars-ingestion:${{ github.sha }}
+          docker push $ECR_REGISTRY/mars-ingestion:latest
+
+      - name: Build and push frontend
+        run: |
+          docker build \
+            -f frontend/Dockerfile \
+            -t $ECR_REGISTRY/mars-frontend:${{ github.sha }} \
+            -t $ECR_REGISTRY/mars-frontend:latest \
+            frontend/
+          docker push $ECR_REGISTRY/mars-frontend:${{ github.sha }}
+          docker push $ECR_REGISTRY/mars-frontend:latest
+
+      # ─── Rolling deploy to ECS (all services on mars-cluster) ────────────
+      - name: Deploy orchestrator
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.CLUSTER }} \
+            --service mars-orchestrator \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Deploy worker
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.CLUSTER }} \
+            --service mars-worker \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Deploy frontend
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.CLUSTER }} \
+            --service mars-frontend \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      # ─── Wait for rollout ─────────────────────────────────────────────────
+      - name: Wait for orchestrator to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.CLUSTER }} \
+            --services mars-orchestrator \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Deployment complete
+        run: echo "All services deployed on commit ${{ github.sha }}"

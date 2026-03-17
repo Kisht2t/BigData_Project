@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test-backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install orchestrator deps
+        run: pip install -r backend/orchestrator/requirements.txt
+
+      - name: Install worker deps
+        run: pip install -r backend/worker/requirements.txt
+
+      - name: Run orchestrator tests
+        run: |
+          cd backend/orchestrator
+          PYTHONPATH="$PYTHONPATH:$(pwd):$(pwd)/../shared:$(pwd)/../worker" \
+          pytest tests/ -v --tb=short
+        env:
+          ENVIRONMENT: local
+          ANTHROPIC_API_KEY: dummy
+          DYNAMODB_TABLE_NAME: mars-results
+          DYNAMODB_HISTORY_TABLE: mars-history
+          SQS_QUEUE_URL: http://localhost:4566/000000000000/mars-agent-tasks
+          S3_BUCKET_NAME: mars-documents-local
+          QDRANT_URL: http://localhost:6333
+          QDRANT_API_KEY: dummy
+
+      - name: Run worker tests
+        run: |
+          cd backend/worker
+          PYTHONPATH="$PYTHONPATH:$(pwd):$(pwd)/../shared" \
+          pytest tests/ -v --tb=short
+        env:
+          ENVIRONMENT: local
+          QDRANT_URL: http://localhost:6333
+          QDRANT_API_KEY: dummy
+
+  lint-backend:
+    name: Lint backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint
+        run: ruff check backend/ ingestion/
+
+  lint-frontend:
+    name: Lint frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install deps
+        run: cd frontend && npm ci
+
+      - name: Lint
+        run: cd frontend && npm run lint
+
+      - name: Type check
+        run: cd frontend && npx tsc --noEmit

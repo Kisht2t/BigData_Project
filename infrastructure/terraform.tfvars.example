@@ -1,0 +1,10 @@
+aws_region        = "us-east-1"
+project           = "mars"
+anthropic_api_key = "sk-ant-..."
+qdrant_url        = "https://your-cluster.qdrant.io"
+qdrant_api_key    = "your-qdrant-api-key"
+
+# Fill these in after running: ./scripts/deploy.sh
+orchestrator_image = "123456789.dkr.ecr.us-east-1.amazonaws.com/mars-orchestrator:latest"
+worker_image       = "123456789.dkr.ecr.us-east-1.amazonaws.com/mars-worker:latest"
+frontend_image     = "123456789.dkr.ecr.us-east-1.amazonaws.com/mars-frontend:latest"
