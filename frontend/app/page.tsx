@@ -21,12 +21,23 @@ const SEARCHING_AGENTS: AgentState = {
   github: "searching",
 };
 
+function generateUUID(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // Fallback for HTTP (non-secure) contexts
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 export default function Page() {
   const [sessionId] = useState<string>(() => {
-    if (typeof window === "undefined") return crypto.randomUUID();
+    if (typeof window === "undefined") return generateUUID();
     const stored = localStorage.getItem("mars_session_id");
     if (stored) return stored;
-    const newId = crypto.randomUUID();
+    const newId = generateUUID();
     localStorage.setItem("mars_session_id", newId);
     return newId;
   });
