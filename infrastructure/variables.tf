@@ -41,3 +41,15 @@ variable "frontend_image" {
   description = "ECR image URI for frontend"
   type        = string
 }
+
+variable "domain_name" {
+  description = "Custom domain (e.g. marsresearch.io). Leave empty to use ALB URL only."
+  type        = string
+  default     = ""
+}
+
+variable "alarm_email" {
+  description = "Email address to receive CloudWatch alarm notifications"
+  type        = string
+  default     = ""
+}

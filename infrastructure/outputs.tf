@@ -1,6 +1,16 @@
 output "alb_url" {
   description = "Application Load Balancer URL — your app's public address"
-  value       = "http://${module.networking.alb_dns_name}"
+  value       = var.domain_name != "" ? "https://${var.domain_name}" : "http://${module.networking.alb_dns_name}"
+}
+
+output "name_servers" {
+  description = "Route53 name servers — point your domain registrar here"
+  value       = var.domain_name != "" ? module.dns[0].name_servers : []
+}
+
+output "cloudwatch_dashboard" {
+  description = "CloudWatch dashboard URL"
+  value       = module.monitoring.dashboard_url
 }
 
 output "ecs_cluster_name" {

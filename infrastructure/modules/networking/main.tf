@@ -1,5 +1,6 @@
 variable "project" {}
 variable "vpc_cidr" { default = "10.0.0.0/16" }
+variable "certificate_arn" { default = "" }
 
 # ─── VPC ───────────────────────────────────────────────────────────────
 resource "aws_vpc" "main" {
@@ -117,10 +118,43 @@ resource "aws_lb" "main" {
   tags               = { Project = var.project }
 }
 
+# HTTP listener — redirects to HTTPS when cert is configured, else serves directly
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
   protocol          = "HTTP"
+
+  default_action {
+    type = var.certificate_arn != "" ? "redirect" : "fixed-response"
+
+    dynamic "redirect" {
+      for_each = var.certificate_arn != "" ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+
+    dynamic "fixed_response" {
+      for_each = var.certificate_arn == "" ? [1] : []
+      content {
+        content_type = "text/plain"
+        message_body = "Not found"
+        status_code  = "404"
+      }
+    }
+  }
+}
+
+# HTTPS listener — only created when certificate_arn is provided
+resource "aws_lb_listener" "https" {
+  count             = var.certificate_arn != "" ? 1 : 0
+  load_balancer_arn = aws_lb.main.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.certificate_arn
 
   default_action {
     type = "fixed-response"
@@ -163,9 +197,13 @@ resource "aws_lb_target_group" "frontend" {
   }
 }
 
-# ─── ALB routing rules ─────────────────────────────────────────────────
+# ─── ALB routing rules (HTTPS when cert present, HTTP otherwise) ───────
+locals {
+  active_listener_arn = var.certificate_arn != "" ? aws_lb_listener.https[0].arn : aws_lb_listener.http.arn
+}
+
 resource "aws_lb_listener_rule" "api" {
-  listener_arn = aws_lb_listener.http.arn
+  listener_arn = local.active_listener_arn
   priority     = 10
 
   action {
@@ -179,7 +217,7 @@ resource "aws_lb_listener_rule" "api" {
 }
 
 resource "aws_lb_listener_rule" "frontend" {
-  listener_arn = aws_lb_listener.http.arn
+  listener_arn = local.active_listener_arn
   priority     = 100
 
   action {
@@ -193,10 +231,14 @@ resource "aws_lb_listener_rule" "frontend" {
 }
 
 # ─── Outputs ───────────────────────────────────────────────────────────
-output "vpc_id"                    { value = aws_vpc.main.id }
-output "public_subnet_ids"         { value = aws_subnet.public[*].id }
-output "private_subnet_ids"        { value = aws_subnet.private[*].id }
-output "ecs_security_group_id"     { value = aws_security_group.ecs_tasks.id }
-output "alb_dns_name"              { value = aws_lb.main.dns_name }
-output "orchestrator_tg_arn"       { value = aws_lb_target_group.orchestrator.arn }
-output "frontend_tg_arn"           { value = aws_lb_target_group.frontend.arn }
+output "vpc_id"                        { value = aws_vpc.main.id }
+output "public_subnet_ids"             { value = aws_subnet.public[*].id }
+output "private_subnet_ids"            { value = aws_subnet.private[*].id }
+output "ecs_security_group_id"         { value = aws_security_group.ecs_tasks.id }
+output "alb_dns_name"                  { value = aws_lb.main.dns_name }
+output "alb_zone_id"                   { value = aws_lb.main.zone_id }
+output "alb_arn_suffix"                { value = aws_lb.main.arn_suffix }
+output "orchestrator_tg_arn"           { value = aws_lb_target_group.orchestrator.arn }
+output "orchestrator_tg_arn_suffix"    { value = aws_lb_target_group.orchestrator.arn_suffix }
+output "frontend_tg_arn"               { value = aws_lb_target_group.frontend.arn }
+output "frontend_tg_arn_suffix"        { value = aws_lb_target_group.frontend.arn_suffix }

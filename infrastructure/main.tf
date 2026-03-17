@@ -78,9 +78,31 @@ module "storage" {
   project = var.project
 }
 
+# ─── DNS + TLS (only created when domain_name is set) ──────────────────
+module "dns" {
+  count        = var.domain_name != "" ? 1 : 0
+  source       = "./modules/dns"
+  project      = var.project
+  domain_name  = var.domain_name
+  alb_dns_name = module.networking.alb_dns_name
+  alb_zone_id  = module.networking.alb_zone_id
+}
+
 module "networking" {
-  source  = "./modules/networking"
-  project = var.project
+  source          = "./modules/networking"
+  project         = var.project
+  certificate_arn = var.domain_name != "" ? module.dns[0].certificate_arn : ""
+}
+
+# ─── Monitoring ────────────────────────────────────────────────────────
+module "monitoring" {
+  source                     = "./modules/monitoring"
+  project                    = var.project
+  aws_region                 = var.aws_region
+  alb_arn_suffix             = module.networking.alb_arn_suffix
+  orchestrator_tg_arn_suffix = module.networking.orchestrator_tg_arn_suffix
+  frontend_tg_arn_suffix     = module.networking.frontend_tg_arn_suffix
+  alarm_email                = var.alarm_email
 }
 
 module "iam" {
