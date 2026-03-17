@@ -115,6 +115,20 @@ resource "aws_iam_role_policy_attachment" "ecs_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_role_policy" "ecs_execution_secrets" {
+  role = aws_iam_role.ecs_execution.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Resource = "arn:aws:secretsmanager:*:*:secret:${var.project}/*"
+      }
+    ]
+  })
+}
+
 # Ingestion role (same as worker + S3 write)
 resource "aws_iam_role" "ingestion" {
   name               = "${var.project}-ingestion-task-role"
