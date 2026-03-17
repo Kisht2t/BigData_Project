@@ -16,7 +16,7 @@ COPY backend/worker /app/worker
 # Copy ingestion pipeline code
 COPY ingestion /app/ingestion
 
-ENV PYTHONPATH="/app/shared:/app/worker"
+ENV PYTHONPATH="/app:/app/worker"
 WORKDIR /app/ingestion
 
 CMD ["python", "pipeline.py"]

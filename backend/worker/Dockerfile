@@ -15,7 +15,7 @@ COPY backend/shared /app/shared
 # Copy worker service code
 COPY backend/worker /app/worker
 
-ENV PYTHONPATH="/app/shared"
+ENV PYTHONPATH="/app"
 WORKDIR /app/worker
 
 CMD ["python", "main.py"]

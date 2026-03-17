@@ -13,7 +13,7 @@ COPY backend/worker /app/worker
 # Copy orchestrator service code
 COPY backend/orchestrator /app/orchestrator
 
-ENV PYTHONPATH="/app/shared:/app/worker"
+ENV PYTHONPATH="/app:/app/worker"
 WORKDIR /app/orchestrator
 
 EXPOSE 8000
