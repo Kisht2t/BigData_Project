@@ -1,4 +1,5 @@
-const BASE_URL = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? "http://localhost:8000";
+// Empty string = relative URLs → same ALB origin (works in prod and local dev via proxy)
+const BASE_URL = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? "";
 
 export type SourceType = "arxiv" | "hackernews" | "github";
 
